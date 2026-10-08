@@ -1,0 +1,113 @@
+﻿<Window x:Class="StepCodeUsage.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:StepCodeUsage.Converters"
+        xmlns:local="clr-namespace:StepCodeUsage"
+        mc:Ignorable="d"
+        Icon="app.ico"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Title="模型额度监控" Height="325" Width="300">
+    <Window.DataContext>
+        <local:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Window.Resources>
+
+    <!-- 整体卡片容器 -->
+    <Border Margin="10" Background="White" CornerRadius="16">
+        <Border.Effect>
+            <DropShadowEffect Color="#DDDDDD" BlurRadius="15" ShadowDepth="2" Opacity="0.5"/>
+        </Border.Effect>
+
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 圆环区域 -->
+            <Grid Width="220" Height="220" HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                <!-- 背景圆环 -->
+                <Ellipse Width="200" Height="200" Stroke="#F0F0F0" StrokeThickness="18"/>
+
+                <!-- 进度圆环 -->
+                <Ellipse Width="200" Height="200" 
+                         Stroke="#FF7F50" 
+                         StrokeThickness="18"
+                         StrokeStartLineCap="Round" 
+                         StrokeEndLineCap="Round"
+                         StrokeDashArray="{Binding DashArray}">
+                    <Ellipse.RenderTransform>
+                        <RotateTransform Angle="-90" CenterX="100" CenterY="100"/>
+                    </Ellipse.RenderTransform>
+                </Ellipse>
+
+                <!-- 中心文本信息，使用 Grid 叠加，分离加载状态 -->
+                <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <!-- 加载中显示的内容 -->
+                    <TextBlock Text="查询中..." 
+                               Foreground="#2C3E50" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"
+                               Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <!-- 数据加载完成后显示的内容 -->
+                    <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                        <TextBlock Text="{Binding UsedAmount, StringFormat='已用 ¥{0}'}" 
+                                   Foreground="#2C3E50" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalAmount, StringFormat='总额 ¥{0}'}" 
+                                   Foreground="#7F8C8D" FontSize="13" Margin="0,6,0,0" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding RemainingAmount, StringFormat='剩余 ¥{0}'}" 
+                                   Foreground="#E67E22" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- 底部状态栏和操作按钮 -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
+                <TextBlock Text="{Binding StatusText}" Foreground="#95A5A6" FontSize="12" VerticalAlignment="Center"/>
+
+                <Button Content="刷新" Margin="12,0,0,0" Width="50" FontSize="15"
+                        Background="#FF7F50" Foreground="White" BorderThickness="0"
+                        Cursor="Hand" Click="Refresh_Click">
+                    <Button.Resources>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+
+                <Button Content="隐藏" Margin="8,0,0,0" Width="50" FontSize="15"
+                        Background="#E0E0E0" Foreground="#333333" BorderThickness="0"
+                        Cursor="Hand" Click="Hide_Click">
+                    <Button.Resources>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+
+</Window>
