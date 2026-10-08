@@ -23,7 +23,7 @@
         <Border.Effect>
             <DropShadowEffect Color="#DDDDDD" BlurRadius="15" ShadowDepth="2" Opacity="0.5"/>
         </Border.Effect>
-
+    <!-- 新增每日额度消耗UI -->
         <Grid Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
