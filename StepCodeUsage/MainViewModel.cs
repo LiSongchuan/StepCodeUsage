@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -12,22 +11,28 @@ using System.Windows.Threading;
 
 namespace StepCodeUsage
 {
+    // 记录每日基准值的模型
+    public class DailyUsageRecord
+    {
+        public string Date { get; set; }
+        public double BaseUsedAmount { get; set; } // 当天第一次启动时的已用额度，作为基准
+    }
+
     public class MainViewModel : INotifyPropertyChanged
     {
-        private DispatcherTimer _countdownTimer;     // 1秒间隔，驱动倒计时和刷新
-        private DispatcherTimer _animationTimer;     // 动画定时器
+        private DispatcherTimer _countdownTimer;
+        private DispatcherTimer _animationTimer;
         private bool _isUpdating = false;
 
-        // 刷新间隔（秒）
         private const int RefreshInterval = 60;
         private int _secondsRemaining = RefreshInterval;
 
-        // 历史记录文件路径 (exe 同级目录下)
+        // 本地历史记录文件路径
         private readonly string _historyFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "usage_history.json");
-        private Dictionary<string, double> _usageHistory = new Dictionary<string, double>();
+        private DailyUsageRecord _todayRecord;
 
-        // 圆环相关参数
-        private const double Radius = 100;
+        // 圆环参数 (请确保与 XAML 里的 Ellipse Width 严格对应，260/2 = 130)
+        private const double Radius = 130;
         private const double StrokeThickness = 18;
         private const double CircumferencePixels = 2 * Math.PI * Radius;
         private const double CircumferenceUnits = CircumferencePixels / StrokeThickness;
@@ -59,7 +64,9 @@ namespace StepCodeUsage
             {
                 _percentage = value;
                 OnPropertyChanged();
-                DashArray = new DoubleCollection { _percentage * CircumferenceUnits, CircumferenceUnits };
+                // 视觉底线设为 1%，防止低占比时圆环完全不可见
+                double visualPercentage = Math.Max(_percentage, 0.01);
+                DashArray = new DoubleCollection { visualPercentage * CircumferenceUnits, CircumferenceUnits };
             }
         }
 
@@ -69,7 +76,6 @@ namespace StepCodeUsage
         {
             LoadHistory();
 
-            // 1秒倒计时定时器
             _countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _countdownTimer.Tick += async (s, e) =>
             {
@@ -85,7 +91,6 @@ namespace StepCodeUsage
             };
             _countdownTimer.Start();
 
-            // 动画定时器
             _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
             _animationTimer.Tick += AnimationTimer_Tick;
 
@@ -129,13 +134,43 @@ namespace StepCodeUsage
                     TotalAmount = total.ToString("F0");
                     RemainingAmount = remaining.ToString("F2");
 
-                    // 【新增】计算今日消耗
-                    CalculateTodayConsumed(used);
+                    // ============ 全新的今日消耗计算逻辑 ============
+                    string today = DateTime.Now.ToString("yyyy-MM-dd");
+
+                    // 1. 如果记录不存在，或者跨天了
+                    if (_todayRecord == null || _todayRecord.Date != today)
+                    {
+                        // 跨天：将当前已用额度作为新一天的基准，并保存
+                        _todayRecord = new DailyUsageRecord
+                        {
+                            Date = today,
+                            BaseUsedAmount = used
+                        };
+                        SaveHistory();
+                        TodayConsumed = "0.00";
+                    }
+                    else
+                    {
+                        // 同一天：检查是否因为充值/重置导致额度倒退
+                        if (used < _todayRecord.BaseUsedAmount)
+                        {
+                            // 额度被重置了，今天的基准必须重新算（否则今日消耗会出现负数）
+                            _todayRecord.BaseUsedAmount = used;
+                            SaveHistory();
+                            TodayConsumed = "0.00";
+                        }
+                        else
+                        {
+                            // 正常情况：当前已用 - 当天基准
+                            double consumedToday = used - _todayRecord.BaseUsedAmount;
+                            TodayConsumed = consumedToday.ToString("F2");
+                        }
+                    }
+                    // ==============================================
 
                     StatusText = $"最后更新: {DateTime.Now:HH:mm:ss}";
                     IsLoading = false;
 
-                    // 重置倒计时（如果在刷新过程中，下一次刷新时间被重置）
                     _secondsRemaining = RefreshInterval;
                     CountdownText = $"{_secondsRemaining}s";
 
@@ -159,34 +194,6 @@ namespace StepCodeUsage
             }
         }
 
-        private void CalculateTodayConsumed(double currentUsed)
-        {
-            string today = DateTime.Now.ToString("yyyy-MM-dd");
-
-            if (_usageHistory.TryGetValue(today, out double lastUsedToday))
-            {
-                // 如果现在的总额小于之前的记录，说明额度被重置了（比如充值或跨周期），今日消耗直接等于当前已用
-                if (currentUsed < lastUsedToday)
-                {
-                    TodayConsumed = currentUsed.ToString("F2");
-                }
-                else
-                {
-                    // 今日消耗 = 当前已用 - 今天最早记录下来的已用
-                    TodayConsumed = (currentUsed - lastUsedToday).ToString("F2");
-                }
-            }
-            else
-            {
-                // 今天第一次记录，今日消耗为 0
-                TodayConsumed = "0.00";
-            }
-
-            // 保存或更新记录
-            _usageHistory[today] = currentUsed;
-            SaveHistory();
-        }
-
         private void LoadHistory()
         {
             try
@@ -194,20 +201,23 @@ namespace StepCodeUsage
                 if (File.Exists(_historyFilePath))
                 {
                     string json = File.ReadAllText(_historyFilePath);
-                    _usageHistory = JsonSerializer.Deserialize<Dictionary<string, double>>(json) ?? new Dictionary<string, double>();
+                    _todayRecord = JsonSerializer.Deserialize<DailyUsageRecord>(json);
                 }
             }
-            catch { _usageHistory = new Dictionary<string, double>(); }
+            catch { _todayRecord = null; }
         }
 
         private void SaveHistory()
         {
             try
             {
-                string json = JsonSerializer.Serialize(_usageHistory);
-                File.WriteAllText(_historyFilePath, json);
+                if (_todayRecord != null)
+                {
+                    string json = JsonSerializer.Serialize(_todayRecord);
+                    File.WriteAllText(_historyFilePath, json);
+                }
             }
-            catch { /* 忽略写入异常 */ }
+            catch { /* 忽略异常 */ }
         }
 
         private string ExecuteCommand(string command)

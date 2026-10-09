@@ -1,15 +1,13 @@
 ﻿<Window x:Class="StepCodeUsage.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:StepCodeUsage.Converters"
         xmlns:local="clr-namespace:StepCodeUsage"
-        mc:Ignorable="d"
         Icon="app.ico"
         ResizeMode="NoResize"
-        WindowStartupLocation="CenterScreen"
-        Title="模型额度监控" Height="325" Width="300">
+        Title="模型额度监控" Height="430" Width="380"
+        WindowStartupLocation="CenterScreen">
+
     <Window.DataContext>
         <local:MainViewModel/>
     </Window.DataContext>
@@ -19,95 +17,115 @@
     </Window.Resources>
 
     <!-- 整体卡片容器 -->
-    <Border Margin="10" Background="White" CornerRadius="16">
+    <Border Margin="15" Background="White" CornerRadius="16">
         <Border.Effect>
-            <DropShadowEffect Color="#DDDDDD" BlurRadius="15" ShadowDepth="2" Opacity="0.5"/>
+            <DropShadowEffect Color="#DDDDDD" BlurRadius="12" ShadowDepth="3" Opacity="0.4"/>
         </Border.Effect>
-    <!-- 新增每日额度消耗UI -->
-        <Grid Margin="10">
+
+        <Grid Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- 圆环区域 -->
-            <Grid Width="220" Height="220" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- 圆环区域（放大尺寸） -->
+            <Grid Width="280" Height="280" HorizontalAlignment="Center" VerticalAlignment="Center">
 
-                <!-- 背景圆环 -->
-                <Ellipse Width="200" Height="200" Stroke="#F0F0F0" StrokeThickness="18"/>
+                <!-- 背景圆环（放大到 260，中心点改为 130） -->
+                <Ellipse Width="260" Height="260" Stroke="#F0F0F0" StrokeThickness="18"/>
 
                 <!-- 进度圆环 -->
-                <Ellipse Width="200" Height="200" 
+                <Ellipse Width="260" Height="260" 
                          Stroke="#FF7F50" 
                          StrokeThickness="18"
                          StrokeStartLineCap="Round" 
                          StrokeEndLineCap="Round"
                          StrokeDashArray="{Binding DashArray}">
                     <Ellipse.RenderTransform>
-                        <RotateTransform Angle="-90" CenterX="100" CenterY="100"/>
+                        <!-- 中心点同步改变：260/2 = 130 -->
+                        <RotateTransform Angle="-90" CenterX="130" CenterY="130"/>
                     </Ellipse.RenderTransform>
                 </Ellipse>
 
-                <!-- 中心文本信息，使用 Grid 叠加，分离加载状态 -->
-                <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <!-- 加载中显示的内容 -->
+                <!-- 中心文本信息 -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,15,0,0">
+                    <!-- 加载中状态 -->
                     <TextBlock Text="查询中..." 
-                               Foreground="#2C3E50" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"
+                               Foreground="#2C3E50" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"
                                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <!-- 数据加载完成后显示的内容 -->
+                    <!-- 数据展示状态 -->
                     <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                        <!-- 顶部大号已用（放大到26，适应上千数值） -->
                         <TextBlock Text="{Binding UsedAmount, StringFormat='已用 ¥{0}'}" 
-                                   Foreground="#2C3E50" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                   Foreground="#2C3E50" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center"/>
+
+                        <!-- 总额与剩余（放大到15） -->
                         <TextBlock Text="{Binding TotalAmount, StringFormat='总额 ¥{0}'}" 
-                                   Foreground="#7F8C8D" FontSize="13" Margin="0,6,0,0" HorizontalAlignment="Center"/>
+                                   Foreground="#7F8C8D" FontSize="15" Margin="0,6,0,0" HorizontalAlignment="Center"/>
                         <TextBlock Text="{Binding RemainingAmount, StringFormat='剩余 ¥{0}'}" 
-                                   Foreground="#E67E22" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+                                   Foreground="#E67E22" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+
+                        <!-- 今日消耗标签（放大到15） -->
+                        <Border Background="#FFF3E0" CornerRadius="6" Padding="10,4" Margin="0,12,0,0" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding TodayConsumed, StringFormat='今日消耗 ¥{0}'}" 
+                                       Foreground="#FF7F50" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        </Border>
                     </StackPanel>
-                </Grid>
+                </StackPanel>
             </Grid>
 
             <!-- 底部状态栏和操作按钮 -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                <TextBlock Text="{Binding StatusText}" Foreground="#95A5A6" FontSize="12" VerticalAlignment="Center"/>
+            <Grid Grid.Row="1" Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <Button Content="刷新" Margin="12,0,0,0" Width="50" FontSize="15"
-                        Background="#FF7F50" Foreground="White" BorderThickness="0"
-                        Cursor="Hand" Click="Refresh_Click">
-                    <Button.Resources>
-                        <Style TargetType="Button">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                <!-- 提示文字：按要求放大到15 -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Foreground="#E67E22" FontWeight="Bold" FontSize="15">
+                        <Run Text="下次刷新: "/>
+                        <Run Text="{Binding CountdownText}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding StatusText}" Foreground="#95A5A6" FontSize="15" Margin="0,4,0,0"/>
+                </StackPanel>
 
-                <Button Content="隐藏" Margin="8,0,0,0" Width="50" FontSize="15"
-                        Background="#E0E0E0" Foreground="#333333" BorderThickness="0"
-                        Cursor="Hand" Click="Hide_Click">
-                    <Button.Resources>
-                        <Style TargetType="Button">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Resources>
-                </Button>
-            </StackPanel>
+                <!-- 按钮：适当放大以匹配大字体 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="刷新" Width="56" Height="32" FontSize="14" Background="#FF7F50" Foreground="White" BorderThickness="0" Cursor="Hand" Click="Refresh_Click">
+                        <Button.Resources>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+
+                    <Button Content="隐藏" Width="56" Height="32" FontSize="14" Background="#EEEEEE" Foreground="#333333" BorderThickness="0" Cursor="Hand" Click="Hide_Click" Margin="10,0,0,0">
+                        <Button.Resources>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
-
 </Window>
